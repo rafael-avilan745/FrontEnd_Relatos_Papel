@@ -1,6 +1,5 @@
 import { Container } from "react-bootstrap";
-import { useContext, useState } from "react";
-import { books } from "../data/database";
+import { useContext, useState, useEffect } from "react";
 import SearchBar from "../components/search/SearchBar";
 import PaginationControl from "../components/common/PaginationControl";
 import { CartContext } from "../context/CartContext";
@@ -8,11 +7,40 @@ import Breadcrumb from "../components/breadcrumb/Breadcrumb";
 import { Link } from "react-router-dom";
 import "./ListaLibros.css";
 
+const API_URL =
+  "https://ms-books-catalogue-production-76cc.up.railway.app/api/v1/books";
+
 const ListaLibros = () => {
   const { dispatch } = useContext(CartContext);
-  const [quantities, setQuantities] = useState({});
 
-  //  Handler para cambiar la cantidad seleccionada
+  const [books, setBooks] = useState([]);
+  const [quantities, setQuantities] = useState({});
+  const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
+  const [searchText, setSearchText] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const itemsPerPage = 6;
+
+  useEffect(() => {
+    fetch(API_URL)
+      .then((res) => res.json())
+      .then((data) => {
+        const mappedBooks = data.map((b) => ({
+          id: b.id,
+          nombre: b.title,
+          descripcion: b.description,
+          precio: b.price,
+          categoria: b.category,
+          cantidad: b.stockQuantity,
+          fotos: b.coverImageUrl,
+          estado: b.status === "AVAILABLE" ? "Disponible" : "Agotado",
+        }));
+
+        setBooks(mappedBooks);
+      })
+      .catch((err) => console.error("Error cargando libros:", err));
+  }, []);
+
   const handleQtyChange = (bookId, value) => {
     setQuantities((prev) => ({
       ...prev,
@@ -20,7 +48,6 @@ const ListaLibros = () => {
     }));
   };
 
-  // Handler para agregar al carrito
   const handleAddToCart = (book) => {
     const cantidad = quantities[book.id] || 1;
 
@@ -29,6 +56,8 @@ const ListaLibros = () => {
       payload: {
         id: book.id,
         nombre: book.nombre,
+        precio: book.precio,
+        fotos: book.fotos,
         cantidad,
       },
     });
@@ -36,17 +65,11 @@ const ListaLibros = () => {
 
   const categorias = [...new Set(books.map((b) => b.categoria))];
 
-  const [categoriasSeleccionadas, setCategoriasSeleccionadas] = useState([]);
-  const [searchText, setSearchText] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-
-  const itemsPerPage = 6;
-
   const toggleCategoria = (categoria) => {
     setCategoriasSeleccionadas((prev) =>
       prev.includes(categoria)
         ? prev.filter((c) => c !== categoria)
-        : [...prev, categoria]
+        : [...prev, categoria],
     );
     setCurrentPage(1);
   };
@@ -55,15 +78,15 @@ const ListaLibros = () => {
     categoriasSeleccionadas.length === 0
       ? books
       : books.filter((b) => categoriasSeleccionadas.includes(b.categoria));
-
+  dispatch;
   const librosBuscados = librosFiltrados.filter((book) =>
-    book.nombre.toLowerCase().includes(searchText.toLowerCase())
+    book.nombre.toLowerCase().includes(searchText.toLowerCase()),
   );
 
   const startIndex = (currentPage - 1) * itemsPerPage;
   const librosPaginados = librosBuscados.slice(
     startIndex,
-    startIndex + itemsPerPage
+    startIndex + itemsPerPage,
   );
 
   return (
@@ -99,14 +122,6 @@ const ListaLibros = () => {
                   alt={book.nombre}
                   className="libro-imagen"
                   loading="lazy"
-                  onError={(e) => {
-                    const placeholderUrl = `https://placehold.co/140x200/cccccc/666666?text=${encodeURIComponent(
-                      book.nombre
-                    )}`;
-                    if (e.target.src !== placeholderUrl) {
-                      e.target.src = placeholderUrl;
-                    }
-                  }}
                 />
 
                 <div className="libro-info">
@@ -151,8 +166,6 @@ const ListaLibros = () => {
                       Ver detalle
                     </Link>
                   </div>
-
-                  <div className="d-flex justify-content-end mb-3"></div>
                 </div>
               </div>
             ))}
