@@ -10,6 +10,7 @@ import { Trash } from "react-bootstrap-icons";
 const Carrito = () => {
   const { cart, dispatch, getTotalPrice } = useContext(CartContext);
   const navigate = useNavigate();
+  const API_URL = import.meta.env.VITE_API_ORDERS;
 
   const cartItemsWithDetails = cart.map((item) => {
     const book = books.find((b) => b.id === item.id);
@@ -24,8 +25,25 @@ const Carrito = () => {
     dispatch({ type: "CLEAR" });
   };
 
-  const handleRemoveItem = (id) => {
+  /*const handleRemoveItem = (id) => {
     dispatch({ type: "REMOVE", payload: id });
+  };*/
+
+  const handleRemoveItem = async (id) => {
+    try {
+      await fetch(
+        `${API_URL}orders/verified?accountId=1&bookId=${id}`,
+        {
+          method: "DELETE",
+        }
+      );
+
+      dispatch({ type: "REMOVE", payload: id });
+
+    } catch (error) {
+      console.error("Error eliminando orden:", error);
+      alert("No se pudo eliminar la orden");
+    }
   };
 
   const handleIncrease = (id) => {
@@ -36,8 +54,34 @@ const Carrito = () => {
     dispatch({ type: "DECREASE", payload: id });
   };
 
-  const handleCheckout = () => {
+  /*const handleCheckout = () => {
     navigate("/checkout");
+  };*/
+
+  const handleCheckout = async () => {
+    try {
+
+      for (let item of cart) {
+
+        await fetch(`${API_URL}orders`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            accountId: 1,
+            bookId: item.id,
+            //totalAmount: Number(getTotalPrice())
+            totalAmount:item.precio
+          })
+        });
+
+      }
+
+      navigate("/checkout");
+
+    } catch (error) {
+      console.error(error);
+      alert("Error creando orden pendiente");
+    }
   };
 
   return (
